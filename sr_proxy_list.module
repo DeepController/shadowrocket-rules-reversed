@@ -1,6 +1,6 @@
 #!name=proxy_list_reversed
 #!homepage=https://github.com/GMOogway/shadowrocket-rules
-#!desc=Reversed(Foreign->DIRECT) Rules:25633 Updated:04-05 17:13 Source:GMOogway
+#!desc=Reversed(Foreign->DIRECT) Rules:25633 Updated:04-06 00:30 Source:GMOogway
 [Rule]
 DOMAIN-SUFFIX,pinterest.com.bo,DIRECT
 DOMAIN-SUFFIX,apple.bs,DIRECT

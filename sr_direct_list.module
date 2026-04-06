@@ -1,6 +1,6 @@
 #!name=direct_list_reversed
 #!homepage=https://github.com/GMOogway/shadowrocket-rules
-#!desc=Reversed(CN->PROXY) Rules:118605 Updated:04-06 00:30 Source:GMOogway
+#!desc=Reversed(CN->PROXY) Rules:118605 Source:GMOogway
 [Rule]
 DOMAIN-SUFFIX,bb3a14ca57af4d81.com,PROXY
 DOMAIN-SUFFIX,boyuan.net,PROXY

@@ -11,7 +11,6 @@ REPO_BASE="https://raw.githubusercontent.com/GMOogway/shadowrocket-rules/master"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMP_DIR="$(mktemp -d)"
 OUTPUT_DIR="$SCRIPT_DIR"
-DATE_STR="$(date '+%m-%d %H:%M')"
 
 # 跨平台 sed -i 兼容 (macOS 需要 -i ''，Linux 需要 -i)
 sedi() {
@@ -39,24 +38,39 @@ done
 
 echo "==> 取反规则: DIRECT <-> PROXY ..."
 
+# 先在临时目录生成取反结果，再与现有文件比较
+
 # ---- sr_direct_list.module → 国内域名走代理 ----
 # 原: 国内域名 DIRECT → 改为 PROXY
 DIRECT_COUNT=$(grep -c ',DIRECT$' "$TEMP_DIR/sr_direct_list.module" || true)
-sed 's/,DIRECT$/,PROXY/g' "$TEMP_DIR/sr_direct_list.module" > "$OUTPUT_DIR/sr_direct_list.module"
-# 更新 header
-sedi "s/^#!name=.*/#!name=direct_list_reversed/" "$OUTPUT_DIR/sr_direct_list.module"
-sedi "s/^#!desc=.*/#!desc=Reversed(CN->PROXY) Rules:${DIRECT_COUNT} Updated:${DATE_STR} Source:GMOogway/" "$OUTPUT_DIR/sr_direct_list.module"
+sed 's/,DIRECT$/,PROXY/g' "$TEMP_DIR/sr_direct_list.module" > "$TEMP_DIR/sr_direct_list_reversed.module"
+sedi "s/^#!name=.*/#!name=direct_list_reversed/" "$TEMP_DIR/sr_direct_list_reversed.module"
+sedi "s/^#!desc=.*/#!desc=Reversed(CN->PROXY) Rules:${DIRECT_COUNT} Source:GMOogway/" "$TEMP_DIR/sr_direct_list_reversed.module"
 
 # ---- sr_proxy_list.module → 国外域名走直连 ----
 # 原: 国外域名 PROXY → 改为 DIRECT
 PROXY_COUNT=$(grep -c ',PROXY$' "$TEMP_DIR/sr_proxy_list.module" || true)
-sed 's/,PROXY$/,DIRECT/g' "$TEMP_DIR/sr_proxy_list.module" > "$OUTPUT_DIR/sr_proxy_list.module"
-# 更新 header
-sedi "s/^#!name=.*/#!name=proxy_list_reversed/" "$OUTPUT_DIR/sr_proxy_list.module"
-sedi "s/^#!desc=.*/#!desc=Reversed(Foreign->DIRECT) Rules:${PROXY_COUNT} Updated:${DATE_STR} Source:GMOogway/" "$OUTPUT_DIR/sr_proxy_list.module"
+sed 's/,PROXY$/,DIRECT/g' "$TEMP_DIR/sr_proxy_list.module" > "$TEMP_DIR/sr_proxy_list_reversed.module"
+sedi "s/^#!name=.*/#!name=proxy_list_reversed/" "$TEMP_DIR/sr_proxy_list_reversed.module"
+sedi "s/^#!desc=.*/#!desc=Reversed(Foreign->DIRECT) Rules:${PROXY_COUNT} Source:GMOogway/" "$TEMP_DIR/sr_proxy_list_reversed.module"
 
-# ---- sr_reject_list.module → 广告拦截保持不变 ----
-cp "$TEMP_DIR/sr_reject_list.module" "$OUTPUT_DIR/sr_reject_list.module"
+# ---- 比较并更新（仅在内容变化时覆盖）----
+CHANGED=0
+for pair in "sr_direct_list_reversed.module:sr_direct_list.module" \
+            "sr_proxy_list_reversed.module:sr_proxy_list.module" \
+            "sr_reject_list.module:sr_reject_list.module"; do
+    src="$TEMP_DIR/${pair%%:*}"
+    dst="$OUTPUT_DIR/${pair##*:}"
+    if [[ ! -f "$dst" ]] || ! diff -q "$src" "$dst" > /dev/null 2>&1; then
+        cp "$src" "$dst"
+        CHANGED=1
+    fi
+done
+
+if [[ "$CHANGED" -eq 0 ]]; then
+    echo "==> 上游规则无变化，跳过更新。"
+    exit 0
+fi
 
 echo "==> 生成取反后的基础配置..."
 
